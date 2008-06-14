@@ -10,6 +10,11 @@ COPYRIGHT = "Torbjorn Vatn"
 # Specify Maven 2.0 remote repositories here, like this:
 repositories.remote << "http://www.ibiblio.org/maven2/"
 
+# Dependencies
+FITNESSE = 'org.fitnesse:fitnesse:jar:20070619'   
+MAVEN_CORE = 'org.apache.maven:maven-core:jar:2.0.9'
+MAVEN_EMBEDDER = 'org.apache.maven:maven-embedder:jar:2.0.4'
+
 desc "The Fitnesse-pom-widget project"
 define "fitnesse-pom-widget" do
 
