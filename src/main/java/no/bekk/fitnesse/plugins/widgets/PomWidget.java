@@ -16,6 +16,7 @@ import org.apache.maven.model.Build;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.ProjectBuildingException;
 
+import fitnesse.html.HtmlUtil;
 import fitnesse.wiki.PageData;
 import fitnesse.wikitext.WidgetBuilder;
 import fitnesse.wikitext.widgets.ClasspathWidget;
@@ -32,8 +33,7 @@ public class PomWidget extends ClasspathWidget {
 	public static final String REGEXP = "^!pom [^\r\n]*";
 	private static final Pattern pattern = Pattern.compile("^!pom (.*)");
 
-	List<String> prioritzedClasspathElements = new ArrayList<String>();
-	List<String> classpathElements = new ArrayList<String>();
+	private List<String> classpaths;
 
 	private String pomFile;
 	boolean generateText;
@@ -43,16 +43,35 @@ public class PomWidget extends ClasspathWidget {
 	MavenProject mavenProject;
 	private Matcher matcher;
 	boolean embedderStarted;
+	private boolean rendered;
 
 	public PomWidget(ParentWidget parent, String inputText) throws Exception {
 		super(parent, "");
 		this.parent = parent;
 		matcher = pattern.matcher(inputText);
 		mavenEmbedder = new MavenEmbedder();
+		classpaths = new ArrayList<String>();
+	}
+	
+	public String render() throws Exception {
+		if (!rendered)
+			doRender();
+		return HtmlUtil.metaText("fitness-pom-widget worked it's magic on: " + pomFile);
+	}
+
+	private void doRender() {
+		try {
+			this.startMavenEmbedder().readMavenProjectFromPom();
+			this.findOutputDirs().findArtifacts();
+			this.stopMavenEmbedder();
+			this.createClasspathWidgets();
+		} catch (Exception e) {
+			handleError(e, parent);
+		}
 	}
 
 	PomWidget insertLineBreak() {
-			new LineBreakWidget(parent, "");
+			addChild(new LineBreakWidget(parent, ""));
 		return this;
 	}
 
@@ -84,8 +103,8 @@ public class PomWidget extends ClasspathWidget {
 		if (mavenBuild != null) {
 			String outputDir = mavenBuild.getOutputDirectory();
 			String testOurputDir = mavenBuild.getTestOutputDirectory();
-			classpathElements.add(outputDir);
-			classpathElements.add(testOurputDir);
+			classpaths.add(outputDir);
+			classpaths.add(testOurputDir);
 		}
 		return this;
 	}
@@ -97,26 +116,38 @@ public class PomWidget extends ClasspathWidget {
 			for (Artifact artifact : artifacts) {
 				File file = artifact.getFile();
 				if (file != null) {
-					classpathElements.add(file.getAbsolutePath());
+					classpaths.add(file.getAbsolutePath());
 				}
 			}
 		}
 		return this;
 	}
+	
+	public PomWidget createClasspathWidgets() throws Exception {
+		for (String classpath : classpaths) {
+			ClasspathWidget classpathWidget = new ClasspathWidget(parent, classpath);
+			addChild(classpathWidget);
+		}
+		
+		return this;
+	}
 
 	private void handleError(Exception e, ParentWidget parent) {
 		e.printStackTrace();
-		new TextWidget(parent, e.toString());
-		new LineBreakWidget(parent, "");
-		new TextWidget(parent, "(Full stacktrace in FitNesse log.)");
+		addChild(new TextWidget(parent, e.toString()));
+		addChild(new LineBreakWidget(parent, ""));
+		addChild(new TextWidget(parent, "(Full stacktrace in FitNesse log.)"));
 	}
 
 	public static class Builder {
 		private MavenEmbedder mavenEmbedder;
 		private MavenProject mavenProject;
-		public String inputText;
+		private String inputText;
+		private List<String> classpaths;
+		private ParentWidget parent;
 
-		public Builder(String inputText) {
+		public Builder(ParentWidget parent, String inputText) {
+			this.parent = parent;
 			this.inputText = inputText;
 		}
 
@@ -129,17 +160,23 @@ public class PomWidget extends ClasspathWidget {
 			this.mavenProject = mavenProject;
 			return this;
 		}
-
+		
+		public Builder classpaths(List<String> classpaths) {
+			this.classpaths = classpaths;
+			return this;
+		}
+		
 		public PomWidget build() throws Exception {
 			return new PomWidget(this);
 		}
+
 	}
 
 	private PomWidget(Builder builder) throws Exception {
-		super(null, builder.inputText);
+		super(builder.parent, builder.inputText);
 		this.mavenEmbedder = builder.mavenEmbedder;
 		this.mavenProject = builder.mavenProject;
-
+		this.classpaths = builder.classpaths;
 		this.matcher = pattern.matcher(builder.inputText);
 	}
 }

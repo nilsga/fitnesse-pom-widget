@@ -7,7 +7,9 @@ import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.apache.maven.artifact.Artifact;
@@ -64,7 +66,7 @@ public class PowWidgetTest {
 	
 	@Test
 	public void shouldSetClassLoaderOnAndStartMavenEmbedder() throws Exception {
-		PomWidget pomWidget = new PomWidget.Builder("").mavenEmbedder(mavenEmbedder).build();
+		PomWidget pomWidget = new PomWidget.Builder(null, "").mavenEmbedder(mavenEmbedder).build();
 		pomWidget.startMavenEmbedder();
 		verify(mavenEmbedder).setClassLoader(Thread.currentThread().getContextClassLoader());
 		verify(mavenEmbedder).start();
@@ -73,7 +75,7 @@ public class PowWidgetTest {
 	
 	@Test
 	public void shouldStopMavenEmbedder() throws Exception {
-		PomWidget pomWidget = new PomWidget.Builder("").mavenEmbedder(mavenEmbedder).build();
+		PomWidget pomWidget = new PomWidget.Builder(null, "").mavenEmbedder(mavenEmbedder).build();
 		pomWidget.startMavenEmbedder();
 		pomWidget.stopMavenEmbedder();
 		verify(mavenEmbedder).stop();
@@ -84,7 +86,7 @@ public class PowWidgetTest {
 		String pom = "pom.xml";
 		stub(mavenEmbedder.readProjectWithDependencies(new File(pom))).toReturn(mavenProject);
 		
-		PomWidget pomWidget = new PomWidget.Builder("!pom pom.xml").mavenEmbedder(mavenEmbedder).build();
+		PomWidget pomWidget = new PomWidget.Builder(null, "!pom pom.xml").mavenEmbedder(mavenEmbedder).build();
 		pomWidget.readMavenProjectFromPom();
 		
 		verify(mavenEmbedder).readProjectWithDependencies(new File(pom));
@@ -93,18 +95,20 @@ public class PowWidgetTest {
 	
 	@Test
 	public void shouldAddOututDirsToClasspathArray() throws Exception {
+		List<String> classpaths = new ArrayList<String>();
 		stub(mavenProject.getBuild()).toReturn(build);
 		stub(build.getOutputDirectory()).toReturn("output");
 		stub(build.getTestOutputDirectory()).toReturn("testOutput");
 		
-		PomWidget pomWidget = new PomWidget.Builder("").mavenProject(mavenProject).build();
+		PomWidget pomWidget = new PomWidget.Builder(null, "").mavenProject(mavenProject).classpaths(classpaths).build();
 		pomWidget.findOutputDirs();
-		
-		assertEquals(pomWidget.classpathElements.size(), 2);
+	
+		assertEquals(classpaths.size(), 2);
 	}
 
 	@Test
 	public void shouldAddArtifactsToClasspathArray() throws Exception {
+		List<String> classpaths = new ArrayList<String>();
 		Set<Artifact> artifacts = new HashSet<Artifact>();
 		Artifact artifact = mock(Artifact.class);
 		Artifact artifact2 = mock(Artifact.class);
@@ -115,14 +119,19 @@ public class PowWidgetTest {
 		stub(artifact.getFile()).toReturn(new File("path"));
 		stub(artifact2.getFile()).toReturn(new File("path2"));
 		
-		PomWidget pomWidget = new PomWidget.Builder("").mavenProject(mavenProject).build();
+		PomWidget pomWidget = new PomWidget.Builder(null, "").mavenProject(mavenProject).classpaths(classpaths).build();
 		pomWidget.findArtifacts();
 		
-		assertEquals(pomWidget.classpathElements.size(), 2);
+		assertEquals(classpaths.size(), 2);
 	}
-
-//	stub(mavenProject.getBuild()).toReturn(build);
-//	stub(build.getOutputDirectory()).toReturn(output);
-//	stub(build.getTestOutputDirectory()).toReturn(outputTest);
-
+	
+	@Test
+	public void shouldCreateClasspathWidgetsForAllElemetsInArray() throws Exception {
+		List<String> classpaths = new ArrayList<String>();
+		classpaths.add("classpath");
+		PomWidget pomWidget = new PomWidget.Builder(parent, "").classpaths(classpaths).build();
+		pomWidget.createClasspathWidgets();
+		verify(parent).addChild(pomWidget);
+		assertEquals(pomWidget.numberOfChildren(), 1);
+	}
 }
