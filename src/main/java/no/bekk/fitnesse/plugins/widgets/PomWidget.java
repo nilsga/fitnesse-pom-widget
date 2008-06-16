@@ -22,7 +22,7 @@ import fitnesse.wikitext.WidgetBuilder;
 import fitnesse.wikitext.widgets.ClasspathWidget;
 import fitnesse.wikitext.widgets.LineBreakWidget;
 import fitnesse.wikitext.widgets.ParentWidget;
-import fitnesse.wikitext.widgets.TextWidget;
+import fitnesse.wikitext.widgets.TextIgnoringWidgetRoot;
 
 public class PomWidget extends ClasspathWidget {
 
@@ -38,67 +38,60 @@ public class PomWidget extends ClasspathWidget {
 	private String pomFile;
 	boolean generateText;
 
-	private ParentWidget parent;
 	private MavenEmbedder mavenEmbedder;
 	MavenProject mavenProject;
 	private Matcher matcher;
-	boolean embedderStarted;
-	private boolean rendered;
+	private String repo;
+	private boolean embedderStarted;
 
 	public PomWidget(ParentWidget parent, String inputText) throws Exception {
-		super(parent, "");
-		this.parent = parent;
-		matcher = pattern.matcher(inputText);
+		super(null, "");
+		String[] inputs = inputText.split("::");
+		repo = inputs[1];
+		matcher = pattern.matcher(inputs[0]);
 		mavenEmbedder = new MavenEmbedder();
 		classpaths = new ArrayList<String>();
+		parent.addChild(this);
+		
+		embedderStarted = startMavenEmbedder(mavenEmbedder);
+		pomFile = findPomFile(matcher);
+		mavenProject = readMavenProjectFromPom(mavenEmbedder, pomFile);
+		findOutputDirs(mavenProject, classpaths);
+		findArtifacts(mavenProject, classpaths, repo);
+		embedderStarted = stopMavenEmbedder(mavenEmbedder, embedderStarted);
+		insertLineBreak(parent);
+		createClasspathWidgets(parent, classpaths);
 	}
 	
 	public String render() throws Exception {
-		if (!rendered)
-			doRender();
 		return HtmlUtil.metaText("fitness-pom-widget worked it's magic on: " + pomFile);
 	}
 
-	private void doRender() {
-		try {
-			this.startMavenEmbedder().readMavenProjectFromPom();
-			this.findOutputDirs().findArtifacts();
-			this.stopMavenEmbedder();
-			this.createClasspathWidgets();
-		} catch (Exception e) {
-			handleError(e, parent);
-		}
-	}
-
-	PomWidget insertLineBreak() {
-			addChild(new LineBreakWidget(parent, ""));
-		return this;
-	}
-
-	PomWidget startMavenEmbedder() throws MavenEmbedderException {
+	static boolean startMavenEmbedder(MavenEmbedder mavenEmbedder) throws MavenEmbedderException {
 		mavenEmbedder.setClassLoader(Thread.currentThread().getContextClassLoader());
 		mavenEmbedder.start();
-		embedderStarted = true;
-		return this;
+		return true;
 	}
 
-	PomWidget stopMavenEmbedder() throws MavenEmbedderException {
+	static boolean stopMavenEmbedder(MavenEmbedder mavenEmbedder, boolean embedderStarted) throws MavenEmbedderException {
 		if (embedderStarted) {
 			mavenEmbedder.stop();
-			embedderStarted = false;
 		}
-		return this;
+		return false;
 	}
 
-	PomWidget readMavenProjectFromPom() throws ArtifactResolutionException, ArtifactNotFoundException, ProjectBuildingException {
-		if (matcher.find()) {
-			pomFile = matcher.group(1);
-			mavenProject = mavenEmbedder.readProjectWithDependencies(new File(pomFile));
-		}
-		return this;
+	static String findPomFile(Matcher matcher) {
+		if (matcher.find())
+			return matcher.group(1);
+		else
+			return "";
+	}
+	
+	static MavenProject readMavenProjectFromPom(MavenEmbedder mavenEmbedder, String pomFile) throws ArtifactResolutionException, ArtifactNotFoundException, ProjectBuildingException {
+		return mavenEmbedder.readProjectWithDependencies(new File(pomFile));
 	}
 
-	PomWidget findOutputDirs() {
+	static void findOutputDirs(MavenProject mavenProject, List<String> classpaths) {
 		Build mavenBuild = mavenProject.getBuild();
 		if (mavenBuild != null) {
 			String outputDir = mavenBuild.getOutputDirectory();
@@ -106,37 +99,36 @@ public class PomWidget extends ClasspathWidget {
 			classpaths.add(outputDir);
 			classpaths.add(testOurputDir);
 		}
-		return this;
 	}
 
 	@SuppressWarnings("unchecked")
-	PomWidget findArtifacts() {
+	static void findArtifacts(MavenProject mavenProject, List<String> classpaths, String repo) throws Exception {
 		Set<Artifact> artifacts = mavenProject.getArtifacts();
 		if (artifacts != null) {
 			for (Artifact artifact : artifacts) {
 				File file = artifact.getFile();
 				if (file != null) {
-					classpaths.add(file.getAbsolutePath());
+					String name = artifact.getFile().getName();
+					String classpath = String.format("%s/%s/%s/%s/%s", repo , artifact.getGroupId().replaceAll("\\.", "/"), artifact.getArtifactId(), artifact.getVersion(), name);
+					if(name.contains("fitnesse"))
+						classpaths.add(0, classpath);
+					else
+						classpaths.add(classpath);
 				}
 			}
 		}
-		return this;
 	}
 	
-	PomWidget createClasspathWidgets() throws Exception {
+	static void createClasspathWidgets(ParentWidget parent, List<String> classpaths) throws Exception {
 		for (String classpath : classpaths) {
-			ClasspathWidget classpathWidget = new ClasspathWidget(parent, String.format("%s %s", "!path", classpath));
-			addChild(classpathWidget);
+			new ClasspathWidget(parent, String.format("%s %s", "!path", classpath));
+			insertLineBreak(parent);
 		}
-		
-		return this;
 	}
 
-	private void handleError(Exception e, ParentWidget parent) {
-		e.printStackTrace();
-		addChild(new TextWidget(parent, e.toString()));
-		addChild(new LineBreakWidget(parent, ""));
-		addChild(new TextWidget(parent, "(Full stacktrace in FitNesse log.)"));
+	static void insertLineBreak(ParentWidget parent) {
+		if(!(parent instanceof TextIgnoringWidgetRoot))
+			new LineBreakWidget(parent, "");
 	}
 
 	public static class Builder {
@@ -169,7 +161,6 @@ public class PomWidget extends ClasspathWidget {
 		public PomWidget build() throws Exception {
 			return new PomWidget(this);
 		}
-
 	}
 
 	private PomWidget(Builder builder) throws Exception {
