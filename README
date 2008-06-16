@@ -6,20 +6,26 @@ This is an atempt to rewrite the fitnesse-pom-widget found at: http://boss.bekk.
 
 == FEATURES/PROBLEMS:
 
-Just started
-
-== SYNOPSIS:
-
-  FIX (code sample of usage)
-
-== REQUIREMENTS:
-
-Java 1.5 or above
-FitNesse
+It's mostly up and running now.
 
 == INSTALL:
 
-Download from here:
+1. Clone this project and build it. Copy the fitnesse-pom-widget jar to your FitNesse folder and add it to the FitNesse server classpath.
+2. Download latest maven-embedder-dep.jar file and place in the FitNesse server classpath.
+3. Create/edit a file plugins.properties in the FitNesse server root directory. This should contain: WikiWidgets=no.bekk.fitnesse.plugins.widgets.PomWidget
+4. Restart FitNesse. You should see the PomWidget being loaded:
+
+          $ java -cp fitnesse.jar;lib\fitnesse-pom-widget-1.0-SNAPSHOT.jar;lib\maven-embedder-2.0.4-dep.jar fitnesse.FitNesse
+                FitNesse (20050731) Started...
+          port:              80
+          root page:         fitnesse.wiki.FileSystemPage at ./FitNesseRoot
+          logger:            none
+          authenticator:     fitnesse.authentication.PromiscuousAuthenticator
+          html page factory: fitnesse.html.HtmlPageFactory
+          page version expiration set to 14 days.
+          Custom wiki widgets loaded:
+                no.bekk.fitnesse.plugins.widgets.PomWidget
+
 
 == LICENSE:
 
