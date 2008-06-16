@@ -123,9 +123,9 @@ public class PomWidget extends ClasspathWidget {
 		return this;
 	}
 	
-	public PomWidget createClasspathWidgets() throws Exception {
+	PomWidget createClasspathWidgets() throws Exception {
 		for (String classpath : classpaths) {
-			ClasspathWidget classpathWidget = new ClasspathWidget(parent, classpath);
+			ClasspathWidget classpathWidget = new ClasspathWidget(parent, String.format("%s %s", "!path", classpath));
 			addChild(classpathWidget);
 		}
 		
