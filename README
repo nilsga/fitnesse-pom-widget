@@ -25,7 +25,7 @@ It's mostly up and running now.
           page version expiration set to 14 days.
           Custom wiki widgets loaded:
                 no.bekk.fitnesse.plugins.widgets.PomWidget
-
+5. Create a FitNesse page with a reference to your pom (!pom /myproject/pom.xml@~/.m2/repository). This should load your projects classpath into the page. The path after the "@" should point to your maven repository.
 
 == LICENSE:
 
