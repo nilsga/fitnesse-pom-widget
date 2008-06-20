@@ -47,7 +47,7 @@ public class PomWidget extends ClasspathWidget {
 	public PomWidget(ParentWidget parent, String inputText) throws Exception {
 		super(null, "");
 		String[] inputs = inputText.split("@");
-		System.out.println("The input was:: ["+ inputs[0] +"]["+inputs[1]+"]");
+		//System.out.println("The input was: "+inputText);
 		matcher = pattern.matcher(inputs[0]);
 		repo = inputs[1];
 		mavenEmbedder = new MavenEmbedder();
