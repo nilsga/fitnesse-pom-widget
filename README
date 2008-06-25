@@ -15,7 +15,7 @@ It's mostly up and running now.
 3. Create/edit a file plugins.properties in the FitNesse server root directory. This should contain: WikiWidgets=no.bekk.fitnesse.plugins.widgets.PomWidget
 4. Restart FitNesse. You should see the PomWidget being loaded:
 
-          $ java -cp fitnesse.jar;lib\fitnesse-pom-widget-1.0-SNAPSHOT.jar;lib\maven-embedder-2.0.4-dep.jar fitnesse.FitNesse
+          $ java -cp fitnesse.jar;lib\fitnesse-pom-widget-1.2.jar;lib\maven-embedder-2.0.4-dep.jar fitnesse.FitNesse
                 FitNesse (20050731) Started...
           port:              80
           root page:         fitnesse.wiki.FileSystemPage at ./FitNesseRoot
